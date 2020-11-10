@@ -26,7 +26,6 @@ class PongBall(Widget):
     velocity_y = NumericProperty(0)
     velocity = ReferenceListProperty(velocity_x, velocity_y)
     speed = NumericProperty(4)
-    direction = NumericProperty(1)
 
     def move(self, players, width):
         s = self.speed
@@ -47,7 +46,7 @@ class PongGame(Widget):
         self.ball.center_x = self.width / 2
         self.ball.center_y = self.height / 2
         self.ball.velocity = Vector(self.ball.speed, 0).rotate(randint(-45, 45) + 180 * randint(0, 1))
-        #self.ball.velocity = Vector(self.ball.speed, 0)
+        # self.ball.velocity = Vector(self.ball.speed, 0)
 
     def update(self, dt):
         players = [self.player1, self.player2]
