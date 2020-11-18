@@ -1,3 +1,3 @@
 # zaverecny_projekt
-Tady bude závěrečný projekt.
-Cílem projektu je funkční AI, které se naučí hrát hru pong. Aplikaci bych dělal v Pythonu v kivy. Už jsem pár jednoduchých her dělal, některé v pythonu a několik v javascriptu. S AI zatím moc zkušeností nemám, ale příjde mi to hrozně zajímavé a rád bych se to naučil.
+Cílem projektu je jednoduchá hra pong, kterou se bude uči hrát neuronová síť. Člověk by pak mohl pozorovat jak se AI učí a mohl by si pak i proti AI zahrát.
+Celé to bude v Pythonu. Na vytvoření aplikace používám knihovnu kivy a na neuronovou síť TensorFlow.
