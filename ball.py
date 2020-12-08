@@ -17,17 +17,27 @@ class PongBall(Widget):
     velocity_x = NumericProperty(0)
     velocity_y = NumericProperty(0)
     velocity = ReferenceListProperty(velocity_x, velocity_y)
-    speed = NumericProperty(4)
+    speed = NumericProperty(1)
+
+    def __init__(self, **kwargs):
+        super(PongBall, self).__init__(**kwargs)
+        self.game_y = 21.5
+        self.game_x = 40
+        self.game_height = 2
+        self.game_width = 2
 
     # Metoda pro pohyb a test kolize s pádly
     def move(self, players, width):
         s = self.speed
+        bounce = False
         # Pohybuje s míčkem po malých částech aby neproletěl pádly
         while s > 0:
             # Pohne míčkem
-            self.pos = Vector(self.velocity_x / self.speed, self.velocity_y / self.speed) + self.pos
+            self.game_x += self.velocity_x / self.speed / 10.0
+            self.game_y += self.velocity_y / self.speed / 10.0
             # Pro oba hráče
             for player in players:
                 # Testuje kolizi s hráčem
-                player.bounce_ball(self, width)
-            s -= 1
+                if not bounce:
+                    bounce = player.bounce_ball(self, width)
+            s -= 0.1

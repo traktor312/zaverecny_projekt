@@ -1,5 +1,5 @@
 from kivy.uix.widget import Widget
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty, NumericProperty
 from kivy.core.window import Window
 from kivy.vector import Vector
 from random import randint
@@ -27,51 +27,75 @@ class PongGame(Widget):
     ball = ObjectProperty(None)
     player1 = ObjectProperty(None)
     player2 = ObjectProperty(None)
+    game_width = NumericProperty(80)
+    game_height = NumericProperty(45)
+    last_window_width = -1
 
     def __init__(self, **kwargs):
         super(PongGame, self).__init__(**kwargs)
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self._keyboard.bind(on_key_up=self._on_keyboard_up)
+        self.player2.game_x = 78
 
     # Metoda pro umístění míčku na střed a zahájení hry
     def serve_ball(self):
         # Nastavení rychlosti míčku na 4
-        self.ball.speed = 4
+        self.ball.speed = 0.5
         # Umístění míčku na střed
-        self.ball.center_x = self.width / 2
-        self.ball.center_y = self.height / 2
+        self.ball.game_x = self.game_width / 2 - 1
+        self.ball.game_y = self.game_height / 2 - 1
         # Nastavení směru míčku
-        self.ball.velocity = Vector(self.ball.speed, 0).rotate(randint(-45, 45) + 180 * randint(0, 1))
-        # self.ball.velocity = Vector(self.ball.speed, 0)
+        # self.ball.velocity = Vector(self.ball.speed, 0).rotate(randint(-45, 45) + 180 * randint(0, 1))
+        self.ball.velocity = Vector(self.ball.speed, 0)
+
+    def update_window(self):
+        self.ball.width = self.width / self.game_width * 2
+        self.ball.height = self.height / self.game_height * 2
+        self.player1.width = self.player2.width = self.width / self.game_width * 2
+        self.player1.height = self.player2.height = self.height / self.game_height * 10
+        self.last_window_width = self.width
 
     # Hlavní smyčka
     def update(self, dt):
+        if self.last_window_width != self.width:
+            self.update_window()
         players = [self.player1, self.player2]
 
         # Volám metodu ball.move(), která pohybuje s míčem a zjišťuje kolize s pádly
-        self.ball.move(players, self.width)
+        self.ball.move(players, self.game_width)
 
         for player in players:
             player.move()
 
         # Pokuď se míč dotkne horního nebo dolního okraje, odrazí se
-        if (self.ball.y < 0) or (self.ball.y > self.height - 50):
+        if (self.ball.game_y < 0) or (self.ball.game_y > self.game_height - self.ball.game_height):
             self.ball.velocity_y *= -1
 
         # Pokuď se míček dotkne levého okraje
-        if self.ball.x < 0:
+        if self.ball.game_x < 0:
             # Umístí míček na střed a zahájí hru
             self.serve_ball()
             # Přičte bod hráči na pravo
             self.player2.score += 1
 
         # Pokuď se míček dotkne pravého okraje
-        if self.ball.x > self.width - 50:
+        if self.ball.game_x > self.game_width - self.ball.game_width:
             # Umístí míček na střed a zahájí hru
             self.serve_ball()
             # Přičte bod hráči na levo
             self.player1.score += 1
+        self.update_canvas()
+
+    def update_canvas(self):
+        w = self.width / self.game_width
+        h = self.height / self.game_height
+        self.ball.x = self.ball.game_x * w
+        self.ball.y = self.ball.game_y * h
+        self.player1.x = self.player1.game_x * w
+        self.player1.y = self.player1.game_y * h
+        self.player2.x = self.player2.game_x * w
+        self.player2.y = self.player2.game_y * h
 
     # Po kliknutí a pohybu kurzorem
     def on_touch_move(self, touch):
