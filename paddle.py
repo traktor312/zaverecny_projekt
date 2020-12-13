@@ -37,17 +37,21 @@ class PongPaddle(Widget):
                 direction = 1
             # Zvýší rychlost tak, aby nebyla vyšší než 35
             ball.speed *= 1.1
-            if ball.speed > 2.5:
-                ball.speed = 2.5
+            if ball.speed > ball.max_speed:
+                ball.speed = ball.max_speed
             # Odrazí míček od pádla a to až o 60° (ze středu pádla 0°, z kraje pádla 60°)
             ball.velocity = Vector(direction * ball.speed, 0).rotate(
-                (ball.game_y + ball.game_height / 2 - self.game_y - self.game_height / 2)/10 * (60 * direction))
+                (ball.game_y + ball.game_height / 2 - self.game_y - self.game_height / 2)/self.game_height * (60 * direction))
             return True
         return False
 
     # Metoda pro pohyb pádlem
-    def move(self):
+    def move(self, height):
         if self.up:
             self.game_y += 1
+            if self.game_y + self.game_height >= height:
+                self.game_y = height - self.game_height
         if self.down:
             self.game_y -= 1
+            if self.game_y <= 0:
+                self.game_y = 0

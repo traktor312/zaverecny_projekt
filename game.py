@@ -3,6 +3,7 @@ from kivy.properties import ObjectProperty, NumericProperty
 from kivy.core.window import Window
 from kivy.vector import Vector
 from random import randint
+from ai import AI
 
 from paddle import PongPaddle
 from ball import PongBall
@@ -37,23 +38,29 @@ class PongGame(Widget):
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self._keyboard.bind(on_key_up=self._on_keyboard_up)
         self.player2.game_x = 78
+        self.use_ai = True
+        if self.use_ai:
+            self.ai = AI()
+        self.ai_players = [True, True]
 
     # Metoda pro umístění míčku na střed a zahájení hry
     def serve_ball(self):
         # Nastavení rychlosti míčku na 4
-        self.ball.speed = 0.5
+        self.ball.speed = self.ball.min_speed
         # Umístění míčku na střed
-        self.ball.game_x = self.game_width / 2 - 1
-        self.ball.game_y = self.game_height / 2 - 1
+        self.ball.game_x = (self.game_width - self.ball.game_width) / 2
+        self.ball.game_y = (self.game_height - self.ball.game_height) / 2
         # Nastavení směru míčku
-        # self.ball.velocity = Vector(self.ball.speed, 0).rotate(randint(-45, 45) + 180 * randint(0, 1))
-        self.ball.velocity = Vector(self.ball.speed, 0)
+        self.ball.velocity = Vector(self.ball.speed, 0).rotate(randint(-45, 45) + 180 * randint(0, 1))
+        # self.ball.velocity = Vector(self.ball.speed, 0)
+        self.player1.game_y = (self.game_height - self.player1.game_height) / 2
+        self.player2.game_y = (self.game_height - self.player2.game_height) / 2
 
     def update_window(self):
-        self.ball.width = self.width / self.game_width * 2
-        self.ball.height = self.height / self.game_height * 2
-        self.player1.width = self.player2.width = self.width / self.game_width * 2
-        self.player1.height = self.player2.height = self.height / self.game_height * 10
+        self.ball.width = self.width / self.game_width * self.ball.game_width
+        self.ball.height = self.height / self.game_height * self.ball.game_height
+        self.player1.width = self.player2.width = self.width / self.game_width * self.player1.game_width
+        self.player1.height = self.player2.height = self.height / self.game_height * self.player1.game_height
         self.last_window_width = self.width
 
     # Hlavní smyčka
@@ -66,10 +73,13 @@ class PongGame(Widget):
         self.ball.move(players, self.game_width)
 
         for player in players:
-            player.move()
+            player.move(self.game_height)
+
+        if self.use_ai:
+            self.game_ai()
 
         # Pokuď se míč dotkne horního nebo dolního okraje, odrazí se
-        if (self.ball.game_y < 0) or (self.ball.game_y > self.game_height - self.ball.game_height):
+        if (self.ball.game_y <= 0) or (self.ball.game_y >= self.game_height - self.ball.game_height):
             self.ball.velocity_y *= -1
 
         # Pokuď se míček dotkne levého okraje
@@ -143,3 +153,33 @@ class PongGame(Widget):
         self._keyboard.unbind(on_key_down=self._on_keyboard_down)
         self._keyboard.unbind(on_key_up=self._on_keyboard_up)
         self._keyboard = None
+
+    def game_ai(self):
+        if self.ai_players[0]:
+            data = [self.player1.game_y, self.ball.game_x, self.ball.game_y,
+                    self.ball.velocity_x, self.ball.velocity_y, self.player1.game_x]
+            data = self.ai.validate_data(data)
+            prediction = self.ai.predict(data)
+            if prediction == 0:
+                self.player1.up = True
+                self.player1.down = False
+            if prediction == 1:
+                self.player1.up = False
+                self.player1.down = True
+            if prediction == 2:
+                self.player1.up = False
+                self.player1.down = False
+        if self.ai_players[1]:
+            data = [self.player2.game_y, self.ball.game_x, self.ball.game_y,
+                    self.ball.velocity_x, self.ball.velocity_y, self.player2.game_x]
+            data = self.ai.validate_data(data)
+            prediction = self.ai.predict(data)
+            if prediction == 0:
+                self.player2.up = True
+                self.player2.down = False
+            if prediction == 1:
+                self.player2.up = False
+                self.player2.down = True
+            if prediction == 2:
+                self.player2.up = False
+                self.player2.down = False

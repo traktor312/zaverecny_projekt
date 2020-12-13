@@ -25,19 +25,22 @@ class PongBall(Widget):
         self.game_x = 40
         self.game_height = 2
         self.game_width = 2
+        self.min_speed = 0.5
+        self.max_speed = 2.5
 
     # Metoda pro pohyb a test kolize s pádly
     def move(self, players, width):
         s = self.speed
+        slow = 10
         bounce = False
         # Pohybuje s míčkem po malých částech aby neproletěl pádly
         while s > 0:
             # Pohne míčkem
-            self.game_x += self.velocity_x / self.speed / 10.0
-            self.game_y += self.velocity_y / self.speed / 10.0
+            self.game_x += self.velocity_x / self.speed / slow
+            self.game_y += self.velocity_y / self.speed / slow
             # Pro oba hráče
             for player in players:
                 # Testuje kolizi s hráčem
                 if not bounce:
                     bounce = player.bounce_ball(self, width)
-            s -= 0.1
+            s -= 1 / slow
