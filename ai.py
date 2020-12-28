@@ -8,6 +8,8 @@ import numpy as np
 # ai_input = [game.player1.game_y, game.ball.game_x, game.ball.game_y, game.ball.velocity_x, game.ball.velocity_y]
 # output nahoru, dolu, zustan
 
+# print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+
 
 class AI:
     def __init__(self):
@@ -22,9 +24,15 @@ class AI:
         data = []
         velocity_x = 0
         velocity_y = 0
+        speeds = []
+        s = 0.5
+        while s < 2.5:
+            speeds.append(s)
+            s *= 1.1
+        speeds.append(2.5)
         ball_velocity = [velocity_x, velocity_y]
         for j in range(number):
-            ball_velocity = Vector(randint(1, 5) / 2.0, 0).rotate(randint(-80, 80) + 180 * randint(0, 1))
+            ball_velocity = Vector(speeds[randint(0, len(speeds) - 1)], 0).rotate(randint(-80, 80) + 180 * randint(0, 1))
             data.append([randint(0, 35) / 35.0, randint(0, 78) / 78.0, randint(0, 43) / 43.0,
                          (ball_velocity[0] + 2.5) / 5.0, (ball_velocity[1] + 2.5) / 5.0, randint(0, 1)])
         return data

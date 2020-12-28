@@ -1,9 +1,11 @@
 from kivy.uix.widget import Widget
 from kivy.properties import ObjectProperty, NumericProperty
 from kivy.core.window import Window
+from kivy.uix.screenmanager import Screen
 from kivy.vector import Vector
 from random import randint
-from ai import AI
+from ai2 import AI2
+from kivy.clock import Clock
 
 from paddle import PongPaddle
 from ball import PongBall
@@ -32,16 +34,26 @@ class PongGame(Widget):
     game_height = NumericProperty(45)
     last_window_width = -1
 
-    def __init__(self, **kwargs):
+    def __init__(self, models, players, **kwargs):
         super(PongGame, self).__init__(**kwargs)
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self._keyboard.bind(on_key_up=self._on_keyboard_up)
         self.player2.game_x = 78
-        self.use_ai = True
-        if self.use_ai:
-            self.ai = AI()
-        self.ai_players = [True, True]
+        self.ai_players = [players[0], players[1]]
+        self.player1_ai = None
+        self.player2_ai = None
+        self.set_ai(models[0], models[1])
+
+    def start(self):
+        self.serve_ball()
+        Clock.schedule_interval(self.update, 1.0 / 50.0)
+
+    def set_ai(self, model0, model1):
+        if self.ai_players[0] == 1:
+            self.player1_ai = model0
+        if self.ai_players[1] == 1:
+            self.player2_ai = model1
 
     # Metoda pro umístění míčku na střed a zahájení hry
     def serve_ball(self):
@@ -56,6 +68,9 @@ class PongGame(Widget):
         self.player1.game_y = (self.game_height - self.player1.game_height) / 2
         self.player2.game_y = (self.game_height - self.player2.game_height) / 2
 
+        self.player1_ai.episode_start(self.observation(0))
+        self.player2_ai.episode_start(self.observation(1))
+
     def update_window(self):
         self.ball.width = self.width / self.game_width * self.ball.game_width
         self.ball.height = self.height / self.game_height * self.ball.game_height
@@ -67,6 +82,12 @@ class PongGame(Widget):
     def update(self, dt):
         if self.last_window_width != self.width:
             self.update_window()
+
+        actions = [self.player1_ai.choose_action(), self.player2_ai.choose_action()]
+        self.step(actions)
+
+        self.player1.last_score = self.player1.score
+        self.player2.last_score = self.player2.score
         players = [self.player1, self.player2]
 
         # Volám metodu ball.move(), která pohybuje s míčem a zjišťuje kolize s pádly
@@ -75,26 +96,36 @@ class PongGame(Widget):
         for player in players:
             player.move(self.game_height)
 
-        if self.use_ai:
-            self.game_ai()
-
         # Pokuď se míč dotkne horního nebo dolního okraje, odrazí se
-        if (self.ball.game_y <= 0) or (self.ball.game_y >= self.game_height - self.ball.game_height):
+        if self.ball.game_y <= 0 and self.ball.velocity_y < 0:
+            self.ball.velocity_y *= -1
+
+        if self.ball.game_y >= self.game_height - self.ball.game_height and self.ball.velocity_y > 0:
             self.ball.velocity_y *= -1
 
         # Pokuď se míček dotkne levého okraje
         if self.ball.game_x < 0:
             # Umístí míček na střed a zahájí hru
-            self.serve_ball()
+            # self.serve_ball()
             # Přičte bod hráči na pravo
             self.player2.score += 1
 
         # Pokuď se míček dotkne pravého okraje
         if self.ball.game_x > self.game_width - self.ball.game_width:
             # Umístí míček na střed a zahájí hru
-            self.serve_ball()
+            # self.serve_ball()
             # Přičte bod hráči na levo
             self.player1.score += 1
+
+        rewards, done = self.rewards_done()
+        self.player1_ai.step(self.observation(0), rewards[0], done)
+        self.player2_ai.step(self.observation(1), rewards[1], done)
+
+        if done:
+            self.player1_ai.episode_end()
+            self.player2_ai.episode_end()
+            self.serve_ball()
+
         self.update_canvas()
 
     def update_canvas(self):
@@ -183,3 +214,45 @@ class PongGame(Widget):
             if prediction == 2:
                 self.player2.up = False
                 self.player2.down = False
+
+    def observation(self, player):
+        if player == 0:
+            obs = [self.player1.game_y / 35, round(self.ball.game_x / 78, 3), round(self.ball.game_y / 43, 3),
+                   round((self.ball.velocity_x + 2.5) / 5, 3), round((self.ball.velocity_y + 2.5) / 5, 3)]
+        if player == 1:
+            obs = [self.player2.game_y / 35, round(self.ball.game_x / 78, 3), round(self.ball.game_y / 43, 3),
+                   round((self.ball.velocity_x + 2.5) / 5, 3), round((self.ball.velocity_y + 2.5) / 5, 3)]
+        return obs
+
+    def rewards_done(self):
+        rewards = [0, 0]
+        done = False
+        if self.ball.bounce:
+            if self.ball.game_x < self.game_width / 2:
+                rewards[0] = 1
+            else:
+                rewards[1] = 1
+        if self.player1.last_score != self.player1.score:
+            rewards = [0, -100]
+            done = True
+        if self.player2.last_score != self.player2.score:
+            rewards = [-100, 0]
+            done = True
+        return rewards, done
+
+    def step(self, actions):
+        self.player1.up = False
+        self.player1.down = False
+        if actions[0] == 0:
+            self.player1.up = True
+        if actions[0] == 1:
+            self.player1.down = True
+        self.player2.up = False
+        self.player2.down = False
+        if actions[1] == 0:
+            self.player2.up = True
+        if actions[1] == 1:
+            self.player2.down = True
+
+
+

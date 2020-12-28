@@ -47,3 +47,75 @@
         id: player_right
         x: root.width - self.width
         center_y : root.center_y
+
+<MenuScreen>:
+    BoxLayout:
+        Button:
+            text: 'Start'
+            on_press:
+                root.manager.current = 'settings'
+        Button:
+            text: 'Quit'
+
+
+<SettingsScreen>:
+    text0: text0
+    text1: text1
+    GridLayout:
+        GridLayout:
+            cols: 2
+            pos: 5, root.height / 4 + 10
+            size: root.width - 10, root.height * 3/4 - 20
+            GridLayout:
+                cols: 1
+                rows: 4
+                Label:
+                    text: "Player 1"
+                Button:
+                    id: text0
+                    text: "Player"
+                    on_press:
+                        root.playing_btn(0)
+                Button:
+                    text: "Load network"
+                    on_press:
+                        root.import_network(0)
+                Button:
+                    text: "Create network"
+                    on_press:
+                        root.export_network(0)
+            GridLayout:
+                cols: 1
+                rows: 4
+                Label:
+                    text: "Player 2"
+                Button:
+                    id: text1
+                    text: "Player"
+                    on_press:
+                        root.playing_btn(1)
+                Button:
+                    text: "Load network"
+                    on_press:
+                        root.import_network(1)
+                Button:
+                    text: "Create network"
+                    on_press:
+                        root.export_network(1)
+        GridLayout:
+            cols: 2
+            pos: 5, 5
+            size: root.width - 10, root.height / 4 - 5
+            Button:
+                text: 'Run'
+                on_press:
+                    root.manager.current = 'canvas'
+            Button:
+                text: 'Back'
+                on_press:
+                    root.manager.current = 'menu'
+
+
+<CanvasScreen>:
+    on_enter:
+        root.start_game()

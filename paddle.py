@@ -25,6 +25,7 @@ class PongPaddle(Widget):
         self.game_x = 0
         self.game_height = 10
         self.game_width = 2
+        self.last_score = 0
 
     # Metoda pro odražení míčku
     def bounce_ball(self, ball, width):
