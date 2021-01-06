@@ -28,6 +28,7 @@ class PongBall(Widget):
         self.min_speed = 0.5
         self.max_speed = 2.5
         self.bounce = False
+        self.last_velocity_x = 0
 
     # Metoda pro pohyb a test kolize s pádly
     def move(self, players, width):

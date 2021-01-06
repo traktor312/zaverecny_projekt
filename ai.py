@@ -1,131 +1,48 @@
-from random import randint
-from kivy.vector import Vector
-
-import tensorflow as tf
+from dqn_keras import Agent
 import numpy as np
-
-# input player y, ball x, ball y, ball v_x, ball v_y, player id (max 35, 78, 43, 2.5, 2.5, (0, 1))
-# ai_input = [game.player1.game_y, game.ball.game_x, game.ball.game_y, game.ball.velocity_x, game.ball.velocity_y]
-# output nahoru, dolu, zustan
-
-# print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
 
 class AI:
-    def __init__(self):
-        self.model = self.create_model()
-        self.train_data = self.create_data(200000)
-        self.train_model(self.train_data)
-        # self.test_data = self.create_data(1, 0)
-        # self.predict_test_data(self.test_data)
+    def __init__(self, fname):
+        lr = 0.0005
+        self.episode = 0
+        self.agent = Agent(gamma=0.99, epsilon=0.0, alpha=lr, input_dims=6,
+                  n_actions=3, mem_size=1000000, batch_size=64, epsilon_end=0.0, fname=fname)
+        self.scores = []
+        self.eps_history = []
+        self.score = 0
+        self.done = False
+        self.observation = []
+        self.action = 0
+        self.n_step = 0
+        self.fname = fname.split("/")[-1]
 
-    @staticmethod
-    def create_inputs(number):
-        data = []
-        velocity_x = 0
-        velocity_y = 0
-        speeds = []
-        s = 0.5
-        while s < 2.5:
-            speeds.append(s)
-            s *= 1.1
-        speeds.append(2.5)
-        ball_velocity = [velocity_x, velocity_y]
-        for j in range(number):
-            ball_velocity = Vector(speeds[randint(0, len(speeds) - 1)], 0).rotate(randint(-80, 80) + 180 * randint(0, 1))
-            data.append([randint(0, 35) / 35.0, randint(0, 78) / 78.0, randint(0, 43) / 43.0,
-                         (ball_velocity[0] + 2.5) / 5.0, (ball_velocity[1] + 2.5) / 5.0, randint(0, 1)])
-        return data
+    def episode_start(self, observation):
+        self.done = False
+        self.score = 0
+        self.observation = observation
 
-    @staticmethod
-    def create_expected_outputs(inputs):
-        data = []
-        for i in inputs:
-            if i[5] == 0:
-                if i[3] > 0.5:
-                    y = i[0] * 35 - 17.5
-                    if abs(y) < 1:
-                        data.append([0, 0, 1])
-                    elif y < 0:
-                        data.append([1, 0, 0])
-                    else:
-                        data.append([0, 1, 0])
-                else:
-                    time = i[1] * 78 / ((i[3] - 0.5) * 5) * -1
-                    if (i[2] * 43 + (i[4] - 0.5) * 5 * time - (
-                            i[2] * 43 + (i[4] - 0.5) * 5 * time) % 43) % 2 == 0:
-                        y = (i[2] * 43 + (i[4] - 0.5) * 5 * time) % 43
-                    else:
-                        y = 43 - (i[2] * 43 + (i[4] - 0.5) * 5 * time) % 43
-                    y = y - (i[0] * 35 + 5)
-                    if abs(y) < 1:
-                        data.append([0, 0, 1])
-                    elif y > 0:
-                        data.append([1, 0, 0])
-                    else:
-                        data.append([0, 1, 0])
-            else:
-                if i[3] < 0.5:
-                    y = i[0] * 35 - 17.5
-                    if abs(y) < 1:
-                        data.append([0, 0, 1])
-                    elif y < 0:
-                        data.append([1, 0, 0])
-                    else:
-                        data.append([0, 1, 0])
-                else:
-                    time = (78 - i[1] * 78) / ((i[3] - 0.5) * 5)
-                    if (i[2] * 43 + (i[4] - 0.5) * 5 * time - (
-                            i[2] * 43 + (i[4] - 0.5) * 5 * time) % 43) % 2 == 0:
-                        y = (i[2] * 43 + (i[4] - 0.5) * 5 * time) % 43
-                    else:
-                        y = 43 - (i[2] * 43 + (i[4] - 0.5) * 5 * time) % 43
-                    y = y - (i[0] * 35 + 5)
-                    if abs(y) < 1:
-                        data.append([0, 0, 1])
-                    elif y > 0:
-                        data.append([1, 0, 0])
-                    else:
-                        data.append([0, 1, 0])
-        return data
+    def choose_action(self):
+        self.action = self.agent.choose_action(self.observation)
+        return self.action
 
-    def create_data(self, number):
-        inputs = self.create_inputs(number)
-        outputs = self.create_expected_outputs(inputs)
+    def step(self, observation_, reward, done):
+        self.score += reward
+        self.agent.remember(self.observation, self.action, reward, observation_, int(done))
+        self.observation = observation_
+        if self.n_step % 3 == 0:
+            self.agent.learn()
+        self.n_step += 1
 
-        inputs = np.array(inputs).reshape(number, 6)
-        outputs = np.array(outputs).reshape(number, 3)
-        return [inputs, outputs]
+    def episode_end(self):
+        self.eps_history.append(self.agent.epsilon)
+        self.scores.append(self.score)
 
-    @staticmethod
-    def validate_data(data):
-        data = [data[0] / 35, data[1] / 78, data[2] / 43, (data[3] + 2.5) / 5, (data[4] + 2.5) / 5, data[5] / 78]
-        data = np.array(data).reshape(1, 6)
-        return data
+        avg_score = np.mean(self.scores[max(0, self.episode-100):(self.episode+1)])
+        print('episode: ', self.episode,'score: %.2f' % self.score,
+                ' average score %.2f' % avg_score)
+        if self.episode > 0:
+            self.agent.save_model()
 
-    @staticmethod
-    def create_model():
-        model = tf.keras.models.Sequential()
-        model.add(tf.keras.layers.Dense(256, activation=tf.nn.relu))
-        model.add(tf.keras.layers.Dense(256, activation=tf.nn.relu))
-        model.add(tf.keras.layers.Dense(256, activation=tf.nn.relu))
-        model.add(tf.keras.layers.Dense(3, activation=tf.nn.softmax))
+        self.episode += 1
 
-        model.compile(optimizer='adam',
-                        loss='categorical_crossentropy',
-                        metrics=['accuracy'])
-        return model
-
-    def train_model(self, data):
-        self.model.fit(data[0], data[1], epochs=10, batch_size=32, shuffle=True)
-
-    def predict_test_data(self, data):
-        predictions = self.model.predict([data[0]])
-        print(np.argmax(predictions[0]))
-        print(predictions[0])
-        print(data[1])
-        return np.argmax(predictions[0])
-
-    def predict(self, data):
-        prediction = self.model(data)
-        return np.argmax(prediction[0])

@@ -1,10 +1,12 @@
 from kivy.app import App
-from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.clock import Clock
 from kivy.config import Config
 from kivy.core.window import Window
 from kivy.properties import ObjectProperty
+
+import tensorflow as tf
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 import sys, os
 import tkinter as tk
@@ -12,7 +14,7 @@ from tkinter import filedialog
 from keras.models import load_model
 
 from game import PongGame
-from ai2 import AI2
+from ai import AI
 
 
 Config.set('graphics', 'width', '640')
@@ -46,7 +48,8 @@ class SettingsScreen(Screen):
 
     def playing_btn(self, player):
         self.set_ai()
-        self.manager.playing[player] = 1 if self.manager.playing[player] == 0 else 0
+        self.manager.playing[player] = 1 if self.manager.playing[player] == 0 \
+                                            and self.manager.models[player] is not None else 0
         self.update_text()
 
     def import_network(self, player):
@@ -60,12 +63,13 @@ class SettingsScreen(Screen):
 
         file_path = filedialog.askopenfilename(initialdir=pathname, title="Load neural network", defaultextension=".h5",
                                                filetypes=self.NETWORK_TYPES)
-        self.manager.models[player] = AI2(file_path)
+        self.manager.models[player] = AI(file_path)
         try:
             self.manager.models[player].agent.q_eval = load_model(file_path)
+            self.manager.playing[player] = 1
+            self.update_text()
         except:
             pass
-        self.update_text()
 
     def export_network(self, player):
         self.set_ai()
@@ -79,16 +83,25 @@ class SettingsScreen(Screen):
         file_path = filedialog.asksaveasfilename(initialdir = pathname, title = "Save neural network",
                                                  defaultextension=".h5", filetypes=self.NETWORK_TYPES)
 
-        model = AI2(file_path)
+        model = AI(file_path)
         try:
             model.agent.save_model()
+            self.manager.models[player] = model
+            self.manager.playing[player] = 1
+            self.update_text()
         except:
             pass
 
 
 class CanvasScreen(Screen):
     def start_game(self):
-        self.game = PongGame(self.manager.models, self.manager.playing)
+        try:
+            self.game = PongGame(self.manager.models, self.manager.playing)
+        except:
+            self.manager.models = [None, None]
+            self.manager.playing = [0, 0]
+            self.game = PongGame(self.manager.models, self.manager.playing)
+
         self.add_widget(self.game)
         self.game.start()
 
