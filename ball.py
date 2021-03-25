@@ -21,12 +21,8 @@ class PongBall(Widget):
 
     def __init__(self, **kwargs):
         super(PongBall, self).__init__(**kwargs)
-        self.game_y = 21.5
-        self.game_x = 40
-        self.game_height = 2
-        self.game_width = 2
-        self.min_speed = 0.5
-        self.max_speed = 2.5
+        self.min_speed = 7
+        self.max_speed = 10
         self.bounce = False
         self.last_velocity_x = 0
 
@@ -38,8 +34,8 @@ class PongBall(Widget):
         # Pohybuje s míčkem po malých částech aby neproletěl pádly
         while s > 0:
             # Pohne míčkem
-            self.game_x += self.velocity_x / self.speed / slow
-            self.game_y += self.velocity_y / self.speed / slow
+            self.x += self.velocity_x / self.speed / slow
+            self.y += self.velocity_y / self.speed / slow
             # Pro oba hráče
             for player in players:
                 # Testuje kolizi s hráčem

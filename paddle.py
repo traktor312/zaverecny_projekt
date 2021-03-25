@@ -16,43 +16,37 @@ from kivy.vector import Vector
 
 class PongPaddle(Widget):
     score = NumericProperty(0)
+    speed = NumericProperty(4)
     up = False
     down = False
-
-    def __init__(self, **kwargs):
-        super(PongPaddle, self).__init__(**kwargs)
-        self.game_y = 17.5
-        self.game_x = 0
-        self.game_height = 10
-        self.game_width = 2
-        self.last_score = 0
+    last_score = NumericProperty(0)
 
     # Metoda pro odražení míčku
     def bounce_ball(self, ball, width):
         # Pokuď mířek narazí do pádla
-        if ball.game_x <= self.game_x + self.game_width and ball.game_x + ball.game_width >= self.game_x and \
-                ball.game_y <= self.game_y + self.game_height and ball.game_y + ball.game_height >= self.game_y:
+        if ball.x <= self.x + self.width and ball.x + ball.width >= self.x and \
+                ball.y <= self.y + self.height and ball.y + ball.height >= self.y:
             # Zjistí, kterým směrem má míček odrazit podle toho na jaké straně se nachází míček (pomocí width)
             direction = -1
-            if self.game_x < width / 2:
+            if self.x < width / 2:
                 direction = 1
             # Zvýší rychlost tak, aby nebyla vyšší než 35
-            ball.speed *= 1.1
+            # ball.speed *= 1.1
             if ball.speed > ball.max_speed:
                 ball.speed = ball.max_speed
             # Odrazí míček od pádla a to až o 60° (ze středu pádla 0°, z kraje pádla 60°)
             ball.velocity = Vector(direction * ball.speed, 0).rotate(
-                (ball.game_y + ball.game_height / 2 - self.game_y - self.game_height / 2)/self.game_height * (60 * direction))
+                (ball.y + ball.height / 2 - self.y - self.height / 2)/self.height * (60 * direction))
             return True
         return False
 
     # Metoda pro pohyb pádlem
     def move(self, height):
         if self.up:
-            self.game_y += 1
-            if self.game_y + self.game_height >= height:
-                self.game_y = height - self.game_height
+            self.y += self.speed
+            if self.y + self.height >= height:
+                self.y = height - self.height
         if self.down:
-            self.game_y -= 1
-            if self.game_y <= 0:
-                self.game_y = 0
+            self.y -= self.speed
+            if self.y <= 0:
+                self.y = 0

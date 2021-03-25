@@ -5,8 +5,6 @@ from kivy.core.window import Window
 from kivy.properties import ObjectProperty
 
 import tensorflow as tf
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 import sys, os
 import tkinter as tk
@@ -16,11 +14,8 @@ from keras.models import load_model
 from game import PongGame
 from ai import AI
 
-
-Config.set('graphics', 'width', '640')
-Config.set('graphics', 'height', '360')
-Config.write()
-Window.size = (640, 360)
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 class MenuScreen(Screen):
@@ -41,10 +36,12 @@ class SettingsScreen(Screen):
 
     def update_text(self):
         self.set_ai()
-        self.text0.text = "Player" if self.manager.playing[0] == 0 else "DQN" + ("" if self.manager.models[0] is None else
-                                                                         " " + self.manager.models[0].fname)
-        self.text1.text = "Player" if self.manager.playing[1] == 0 else "DQN" + ("" if self.manager.models[1] is None else
-                                                                         " " + self.manager.models[1].fname)
+        self.text0.text = "Player" if self.manager.playing[0] == 0 else "DQN" + (
+            "" if self.manager.models[0] is None else
+            " " + self.manager.models[0].fname)
+        self.text1.text = "Player" if self.manager.playing[1] == 0 else "DQN" + (
+            "" if self.manager.models[1] is None else
+            " " + self.manager.models[1].fname)
 
     def playing_btn(self, player):
         self.set_ai()
@@ -63,11 +60,12 @@ class SettingsScreen(Screen):
 
         file_path = filedialog.askopenfilename(initialdir=pathname, title="Load neural network", defaultextension=".h5",
                                                filetypes=self.NETWORK_TYPES)
-        self.manager.models[player] = AI(file_path)
         try:
-            self.manager.models[player].agent.q_eval = load_model(file_path)
-            self.manager.playing[player] = 1
-            self.update_text()
+            if len(file_path) > 0:
+                self.manager.models[player] = AI(file_path)
+                self.manager.models[player].agent.q_eval = load_model(file_path)
+                self.manager.playing[player] = 1
+                self.update_text()
         except:
             pass
 
@@ -76,19 +74,20 @@ class SettingsScreen(Screen):
         root = tk.Tk()
         root.withdraw()
 
-        pathname = os.path.abspath(os.path.dirname(sys.argv[0]))+"/networks/player" + str(player)
+        pathname = os.path.abspath(os.path.dirname(sys.argv[0])) + "/networks/player" + str(player)
         if not os.path.exists(pathname):
             os.makedirs(pathname)
 
-        file_path = filedialog.asksaveasfilename(initialdir = pathname, title = "Save neural network",
+        file_path = filedialog.asksaveasfilename(initialdir=pathname, title="Save neural network",
                                                  defaultextension=".h5", filetypes=self.NETWORK_TYPES)
 
-        model = AI(file_path)
         try:
-            model.agent.save_model()
-            self.manager.models[player] = model
-            self.manager.playing[player] = 1
-            self.update_text()
+            if len(file_path) > 0:
+                model = AI(file_path)
+                model.agent.save_model()
+                self.manager.models[player] = model
+                self.manager.playing[player] = 1
+                self.update_text()
         except:
             pass
 
@@ -96,15 +95,17 @@ class SettingsScreen(Screen):
 class CanvasScreen(Screen):
     def start_game(self):
         try:
-            self.game = PongGame(self.manager.models, self.manager.playing)
+            if not self.manager.playing[0]:
+                self.manager.models[0] = None
+            if not self.manager.playing[1]:
+                self.manager.models[1] = None
+            game = PongGame(self.manager.models)
         except:
             self.manager.models = [None, None]
-            self.manager.playing = [0, 0]
-            self.game = PongGame(self.manager.models, self.manager.playing)
+            game = PongGame(self.manager.models)
 
-        self.add_widget(self.game)
-        self.game.start()
-
+        self.add_widget(game)
+        game.start()
 
 
 class PongApp(App):
@@ -113,6 +114,11 @@ class PongApp(App):
         sm.add_widget(MenuScreen(name='menu'))
         sm.add_widget(SettingsScreen(name='settings'))
         sm.add_widget(CanvasScreen(name='canvas'))
+        Config.set('graphics', 'width', '640')
+        Config.set('graphics', 'height', '360')
+        Config.set('graphics', 'resizable', False)
+        Config.write()
+        Window.size = (640, 360)
 
         return sm
 
